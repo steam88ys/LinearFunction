@@ -52,23 +52,9 @@ function convertToTensor(data) {
         const inputTensor = tf.tensor2d(inputs, [inputs.length, 1]);
         const labelTensor = tf.tensor2d(labels, [labels.length, 1]);
 
-        //Step 3. Normalize the data to the range 0 - 1 using min-max scaling
-        const inputMax = inputTensor.max();
-        const inputMin = inputTensor.min();
-        const labelMax = labelTensor.max();
-        const labelMin = labelTensor.min();
-
-        const normalizedInputs = inputTensor.sub(inputMin).div(inputMax.sub(inputMin));
-        const normalizedLabels = labelTensor.sub(labelMin).div(labelMax.sub(labelMin));
-
         return {
-            inputs: normalizedInputs,
-            labels: normalizedLabels,
-            // Return the min/max bounds so we can use them later.
-            inputMax,
-            inputMin,
-            labelMax,
-            labelMin,
+            inputs: inputTensor,
+            labels: labelTensor
         }
     });
 }
@@ -96,26 +82,23 @@ async function trainModel(model, inputs, labels, epochs) {
 }
 
 function testModel(model, inputData, normalizationData, epochs) {
-    const {inputMax, inputMin, labelMin, labelMax} = normalizationData;
 
     // Generate predictions for a uniform range of numbers between 0 and 1;
     // We un-normalize the data by doing the inverse of the min-max scaling
     // that we did earlier.
     const [xs, preds] = tf.tidy(() => {
 
-        const xs = tf.linspace(0, 1, 100);
-        const preds = model.predict(xs.reshape([100, 1]));
+        let xs = [];
+        for(let x=0; x<30; x+=0.5)
+        {
+            xs.push(x);
+        }
 
-        const unNormXs = xs
-            .mul(inputMax.sub(inputMin))
-            .add(inputMin);
-
-        const unNormPreds = preds
-            .mul(labelMax.sub(labelMin))
-            .add(labelMin);
+        const xsTensor = tf.tensor2d(xs, [xs.length, 1]);
+        const preds = model.predict(xsTensor);
 
         // Un-normalize the data
-        return [unNormXs.dataSync(), unNormPreds.dataSync()];
+        return [xsTensor.dataSync(), preds.dataSync()];
     });
 
     const predictedPoints = Array.from(xs).map((val, i) => {
