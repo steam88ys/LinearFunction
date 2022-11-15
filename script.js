@@ -70,7 +70,7 @@ function convertToTensor(data) {
     });
 }
 
-async function trainModel(model, inputs, labels) {
+async function trainModel(model, inputs, labels, epochs) {
     // Prepare the model for training.
     model.compile({
         optimizer: tf.train.adam(),
@@ -79,7 +79,6 @@ async function trainModel(model, inputs, labels) {
     });
 
     const batchSize = 32;
-    const epochs = 500;
 
     return await model.fit(inputs, labels, {
         batchSize,
@@ -93,7 +92,7 @@ async function trainModel(model, inputs, labels) {
     });
 }
 
-function testModel(model, inputData, normalizationData) {
+function testModel(model, inputData, normalizationData, epochs) {
     const {inputMax, inputMin, labelMin, labelMax} = normalizationData;
 
     // Generate predictions for a uniform range of numbers between 0 and 1;
@@ -125,7 +124,7 @@ function testModel(model, inputData, normalizationData) {
     }));
 
     tfvis.render.scatterplot(
-        {name: '예측데이터 확인'},
+        {name: '예측데이터 확인 학습횟수: ' + epochs},
         {values: [originalPoints, predictedPoints], series: ['학습', '예측']},
         {
             xLabel: 'x',
@@ -163,12 +162,14 @@ async function run() {
     const {inputs, labels} = tensorData;
 
     // Train the model
-    await trainModel(model, inputs, labels);
-    console.log('Done Training');
+    await trainModel(model, inputs, labels, 100);
+    testModel(model, data, tensorData, 100);
 
-    // Make some predictions using the model and compare them to the
-    // original data
-    testModel(model, data, tensorData);
+    await trainModel(model, inputs, labels, 100);
+    testModel(model, data, tensorData, 100+100);
+
+    await trainModel(model, inputs, labels, 300);
+    testModel(model, data, tensorData, 100+200+300);
 }
 
 document.addEventListener('DOMContentLoaded', run);
